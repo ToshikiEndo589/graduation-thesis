@@ -95,7 +95,6 @@
         <select id="batterMode">
           <option value="triple" selected>打率 出塁率 長打率</option>
           <option value="ops">OPS</option>
-          <option value="avgonly">打率だけ</option>
         </select>
       </div>
       <div>
@@ -107,7 +106,7 @@
     </div>
 
     <div class="hint">
-      走力は進塁とアウト時の進塁と盗塁死と併殺の起きやすさに影響します。入力モードがOPSや打率だけの場合は内部で出塁率と長打率を推定します。
+      走力は進塁とアウト時の進塁と盗塁死と併殺の起きやすさに影響します。入力モードがOPSの場合は内部で出塁率と長打率を推定します。
     </div>
 
     <div class="table-scroll" style="margin-top:10px;">
@@ -133,11 +132,11 @@
       <div>
         <label>シミュレーション回数</label>
         <select id="simCount">
-          <option value="10000">10000回</option>
-          <option value="1000000" selected>1000000回</option>
-          <option value="10000000">10000000回</option>
+          <option value="100">百回</option>
+          <option value="1000">千回</option>
+          <option value="10000">1万回</option>
+          <option value="100000" selected>10万回</option>
         </select>
-        <div class="mini">10000000回は端末性能によって時間がかかることがあります</div>
       </div>
     </div>
 
@@ -389,8 +388,7 @@
     const mode = document.getElementById("batterMode").value;
     const el = document.getElementById("batterModeHint");
     if (mode === "triple") el.textContent = "打率 出塁率 長打率を分けると打者タイプの差が出やすくなります";
-    else if (mode === "ops") el.textContent = "OPSは入力が簡単ですが同じOPSでも中身の違いは表現しにくいです";
-    else el.textContent = "打率だけは一番簡単ですが出塁や長打の違いは推定になります";
+    else el.textContent = "OPSは入力が簡単ですが同じOPSでも中身の違いは表現しにくいです";
   }
 
   function deriveFromOPS(ops) {
@@ -411,24 +409,6 @@
     let avg = obp - bb;
     avg = clamp(avg, 0.170, 0.360);
     avg = Math.min(avg, obp);
-
-    return { avg, obp, slg };
-  }
-
-  function deriveFromAVG(avg) {
-    avg = clamp(avg, 0.150, 0.360);
-
-    let bb = 0.075 + (avg - 0.250) * 0.30;
-    bb = clamp(bb, 0.03, 0.14);
-
-    let obp = avg + bb;
-    obp = clamp(obp, avg, 0.450);
-
-    let iso = 0.120 + (avg - 0.250) * 0.55;
-    iso = clamp(iso, 0.05, 0.35);
-
-    let slg = avg + iso;
-    slg = clamp(slg, avg, 0.850);
 
     return { avg, obp, slg };
   }
@@ -458,16 +438,10 @@
 
         arr.push({ avg, obp, slg, spd });
 
-      } else if (mode === "ops") {
+      } else {
         let ops = parseFloat(row.querySelector(".ops-inp").value);
         if (!isFinite(ops)) ops = 0.700;
         const b = deriveFromOPS(ops);
-        arr.push({ ...b, spd });
-
-      } else {
-        let avg = parseFloat(row.querySelector(".avgonly-inp").value);
-        if (!isFinite(avg)) avg = 0.250;
-        const b = deriveFromAVG(avg);
         arr.push({ ...b, spd });
       }
     });
@@ -494,19 +468,11 @@
           <th>走力</th>
         </tr>
       `;
-    } else if (mode === "ops") {
-      theadHTML = `
-        <tr>
-          <th style="width:30px;">打順</th>
-          <th>OPS</th>
-          <th>走力</th>
-        </tr>
-      `;
     } else {
       theadHTML = `
         <tr>
           <th style="width:30px;">打順</th>
-          <th>打率</th>
+          <th>OPS</th>
           <th>走力</th>
         </tr>
       `;
@@ -538,25 +504,11 @@
             </td>
           </tr>
         `;
-      } else if (mode === "ops") {
-        rowsHTML += `
-          <tr class="lineup-row" id="batterRow${i}">
-            <td style="text-align:center; font-weight:bold;">${i + 1}</td>
-            <td><input type="number" step="0.001" min="0" max="2" value="${ops.toFixed(3)}" class="ops-inp"></td>
-            <td>
-              <select class="spd-inp">
-                <option value="normal" ${d.spd === "normal" ? "selected" : ""}>普通</option>
-                <option value="fast" ${d.spd === "fast" ? "selected" : ""}>俊足</option>
-                <option value="slow" ${d.spd === "slow" ? "selected" : ""}>鈍足</option>
-              </select>
-            </td>
-          </tr>
-        `;
       } else {
         rowsHTML += `
           <tr class="lineup-row" id="batterRow${i}">
             <td style="text-align:center; font-weight:bold;">${i + 1}</td>
-            <td><input type="number" step="0.001" min="0" max="1" value="${d.avg.toFixed(3)}" class="avgonly-inp"></td>
+            <td><input type="number" step="0.001" min="0" max="2" value="${ops.toFixed(3)}" class="ops-inp"></td>
             <td>
               <select class="spd-inp">
                 <option value="normal" ${d.spd === "normal" ? "selected" : ""}>普通</option>
